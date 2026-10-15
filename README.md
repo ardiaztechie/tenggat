@@ -1,17 +1,27 @@
-# tenggat
+# Tenggat
 
-A new Flutter project.
+Aplikasi pengingat tugas dan jadwal kuliah untuk mahasiswa.
+Tugas-1 · Praktikum Pemrograman Bergerak (TIF-2024) · BK19
 
-## Getting Started
+**Penyusun:** Ardiaz Agust Sujatmiko · NIM 2305101145
 
-This project is a starting point for a Flutter application.
+## Isi repository
+- `docs/` : dokumen analisis kebutuhan pengguna dan karakteristik perangkat bergerak (PDF dan Word).
+- `lib/` : kode aplikasi Flutter (Android).
+- Backend (Laravel REST API + MySQL): https://github.com/ardiaztechie/tenggat-api
 
-A few resources to get you started if this is your first Flutter project:
+## Fitur pada prototipe
+- Tambah, ubah, hapus tugas (judul, mata kuliah, tenggat, prioritas)
+- Lampiran foto (kamera/galeri) dan catatan
+- Centang selesai dengan bunyi "klunting"
+- Riwayat tugas selesai
+- Statistik ketepatan waktu dan filter tugas terlambat
+- Mode gelap mengikuti tema sistem
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Dalam pengembangan/rencana: notifikasi pengingat, mode offline (SQLite), kalender.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Menjalankan
+1. Jalankan backend (lihat README `tenggat-api`).
+2. `flutter pub get`
+3. Ubah `baseUrl` di `lib/api_service.dart` (emulator: `http://10.0.2.2:8000/api`; HP asli dengan `adb reverse tcp:8000 tcp:8000`: `http://127.0.0.1:8000/api`).
+4. `flutter run`
