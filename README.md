@@ -36,3 +36,11 @@ Dalam pengembangan/rencana: mode offline (SQLite), kalender.
 2. `flutter pub get`
 3. Ubah `baseUrl` di `lib/api_service.dart` (emulator: `http://10.0.2.2:8000/api`; HP asli dengan `adb reverse tcp:8000 tcp:8000`: `http://127.0.0.1:8000/api`).
 4. `flutter run`
+
+# UTS: Rancangan UI/UX, Navigasi, Data, dan Hardware
+
+Desain Figma: https://www.figma.com/design/CSEw2SoHXp01sr6MMckyty/tenggat
+
+Isi folder:
+- desain/ : hasil ekspor layar (PNG)
+- Ardiaz_2305101145_UTS.pdf : dokumen rancangan
