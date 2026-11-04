@@ -6,10 +6,15 @@ import 'bantu.dart';
 import 'detail_tugas.dart';
 import 'form_tugas.dart';
 import 'halaman_statistik.dart';
+import 'layanan_notifikasi.dart';
 import 'tugas.dart';
 import 'ubin_tugas.dart';
 
-void main() => runApp(const TenggatApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await LayananNotifikasi.mulai();
+  runApp(const TenggatApp());
+}
 
 class TenggatApp extends StatelessWidget {
   const TenggatApp({super.key});
@@ -46,6 +51,12 @@ class _HalamanUtamaState extends State<HalamanUtama> {
   String? _galat;
   int _tab = 0;
 
+  // Pencarian dan filter di Beranda.
+  final _kolomCari = TextEditingController();
+  String _kata = '';
+  String? _prioritas; // null = semua
+  String? _matkul; // null = semua
+
   // Tugas yang baru dicentang tetap tampil sebentar di Beranda.
   final Set<int> _baruDicentang = {};
 
@@ -61,6 +72,7 @@ class _HalamanUtamaState extends State<HalamanUtama> {
   @override
   void dispose() {
     _pemutar.dispose();
+    _kolomCari.dispose();
     super.dispose();
   }
 
@@ -83,6 +95,7 @@ class _HalamanUtamaState extends State<HalamanUtama> {
         _memuat = false;
         _galat = null;
       });
+      LayananNotifikasi.jadwalkan(_daftar);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -96,6 +109,26 @@ class _HalamanUtamaState extends State<HalamanUtama> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(teks), action: aksi));
+  }
+
+  Future<void> _ujiNotifikasi() async {
+    final ok = await LayananNotifikasi.uji();
+    _pesan(ok
+        ? 'Notifikasi percobaan dikirim.'
+        : 'Notifikasi tidak aktif. Cek izin notifikasi di pengaturan HP.');
+  }
+
+  bool _cocok(Tugas t) {
+    final k = _kata.trim().toLowerCase();
+    if (k.isNotEmpty &&
+        !t.judul.toLowerCase().contains(k) &&
+        !t.mataKuliah.toLowerCase().contains(k) &&
+        !t.catatan.toLowerCase().contains(k)) {
+      return false;
+    }
+    if (_prioritas != null && t.prioritas != _prioritas) return false;
+    if (_matkul != null && t.mataKuliah != _matkul) return false;
+    return true;
   }
 
   Future<void> _bunyi() async {
@@ -190,6 +223,14 @@ class _HalamanUtamaState extends State<HalamanUtama> {
     return Scaffold(
       appBar: AppBar(
         title: Text(judul[_tab], style: const TextStyle(fontWeight: FontWeight.w800)),
+        actions: [
+          if (_tab == 0)
+            IconButton(
+              tooltip: 'Uji notifikasi',
+              icon: const Icon(Icons.notifications_active_outlined),
+              onPressed: _ujiNotifikasi,
+            ),
+        ],
       ),
       floatingActionButton: _tab == 0
           ? FloatingActionButton.extended(
@@ -253,9 +294,10 @@ class _HalamanUtamaState extends State<HalamanUtama> {
       );
 
   Widget _beranda() {
-    final tampil =
+    final dasar =
         _daftar.where((t) => !t.selesai || _baruDicentang.contains(t.id)).toList();
-    final aktif = tampil.where((t) => !t.selesai).toList();
+    final aktif = dasar.where((t) => !t.selesai).toList();
+    final tampil = dasar.where(_cocok).toList();
     final mendesak = aktif
         .where((t) => !t.terlambat && t.tenggat.difference(DateTime.now()).inHours < 24)
         .length;
@@ -266,7 +308,8 @@ class _HalamanUtamaState extends State<HalamanUtama> {
         padding: const EdgeInsets.only(bottom: 96),
         children: [
           _Ringkasan(menunggu: aktif.length, mendesak: mendesak, terlambat: terlambat),
-          if (tampil.isEmpty)
+          if (dasar.isNotEmpty) _bilahCari(aktif),
+          if (dasar.isEmpty)
             const Padding(
               padding: EdgeInsets.all(40),
               child: Center(
@@ -275,8 +318,83 @@ class _HalamanUtamaState extends State<HalamanUtama> {
                   textAlign: TextAlign.center,
                 ),
               ),
+            )
+          else if (tampil.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(40),
+              child: Center(
+                child: Text(
+                  'Tidak ada tugas yang cocok.\nUbah kata cari atau filter.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
           for (final t in tampil) _ubin(t),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(String label, bool pilih, VoidCallback aksi) => Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: ChoiceChip(label: Text(label), selected: pilih, onSelected: (_) => aksi()),
+      );
+
+  Widget _bilahCari(List<Tugas> aktif) {
+    final matkul = aktif.map((t) => t.mataKuliah).where((m) => m.isNotEmpty).toSet().toList()
+      ..sort();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _kolomCari,
+            onChanged: (v) => setState(() => _kata = v),
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'Cari judul, mata kuliah, atau catatan',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _kata.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Hapus',
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        _kolomCari.clear();
+                        setState(() => _kata = '');
+                      },
+                    ),
+              isDense: true,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _chip('Semua prioritas', _prioritas == null,
+                    () => setState(() => _prioritas = null)),
+                for (final p in const ['tinggi', 'sedang', 'rendah'])
+                  _chip('${p[0].toUpperCase()}${p.substring(1)}', _prioritas == p,
+                      () => setState(() => _prioritas = _prioritas == p ? null : p)),
+              ],
+            ),
+          ),
+          if (matkul.isNotEmpty)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _chip('Semua mata kuliah', _matkul == null,
+                      () => setState(() => _matkul = null)),
+                  for (final m in matkul)
+                    _chip(m, _matkul == m,
+                        () => setState(() => _matkul = _matkul == m ? null : m)),
+                ],
+              ),
+            ),
         ],
       ),
     );
